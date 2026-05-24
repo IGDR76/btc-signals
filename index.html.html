@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>BTC/ETH Pro Sinyal</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #0a0e1a; color: #e0e6f0; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif; min-height: 100vh; }
+
+.header { background: #0d1220; border-bottom: 1px solid #1e2a45; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+.header h1 { font-size: 16px; font-weight: 600; color: #7eb8ff; letter-spacing: 0.5px; }
+.live-dot { width: 8px; height: 8px; border-radius: 50%; background: #00e676; animation: pulse 1.5s infinite; display: inline-block; margin-right: 6px; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+.last-update { font-size: 11px; color: #4a5568; }
+
+.tab-bar { display: flex; background: #0d1220; border-bottom: 1px solid #1e2a45; }
+.tab { flex: 1; padding: 10px; text-align: center; font-size: 13px; font-weight: 500; color: #4a5568; cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s; }
+.tab.active { color: #7eb8ff; border-bottom-color: #7eb8ff; }
+
+.content { padding: 12px; }
+
+/* SİNYAL KARTI */
+.signal-card { border-radius: 16px; padding: 20px; margin-bottom: 12px; text-align: center; position: relative; overflow: hidden; }
+.signal-card.long { background: linear-gradient(135deg, #0a2a1a 0%, #0d3320 100%); border: 1.5px solid #00e676; }
+.signal-card.short { background: linear-gradient(135deg, #2a0a0a 0%, #330d0d 100%); border: 1.5px solid #f44336; }
+.signal-card.wait { background: #0d1220; border: 1.5px solid #2a3a5a; }
+
+.signal-type { font-size: 36px; font-weight: 800; letter-spacing: 2px; margin-bottom: 4px; }
+.signal-type.long { color: #00e676; }
+.signal-type.short { color: #f44336; }
+.signal-type.wait { color: #7eb8ff; }
+
+.signal-strength { font-size: 13px; color: #8899aa; margin-bottom: 16px; }
+.strength-bar { display: flex; gap: 3px; justify-content: center; margin-bottom: 16px; }
+.strength-dot { width: 20px; height: 6px; border-radius: 3px; background: #1e2a45; }
+.strength-dot.active.long { background: #00e676; }
+.strength-dot.active.short { background: #f44336; }
+.strength-dot.active.wait { background: #7eb8ff; }
+
+.price-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+.price-item { background: rgba(255,255,255,0.05); border-radius: 10px; padding: 10px 8px; }
+.price-label { font-size: 10px; color: #4a5568; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+.price-value { font-size: 15px; font-weight: 700; }
+.price-value.entry { color: #7eb8ff; }
+.price-value.sl { color: #f44336; }
+.price-value.tp { color: #00e676; }
+
+.lev-badge { display: inline-block; background: rgba(126,184,255,0.15); border: 1px solid #7eb8ff; color: #7eb8ff; border-radius: 20px; padding: 4px 16px; font-size: 13px; font-weight: 700; }
+
+/* FIYAT BAR */
+.price-bar { background: #0d1220; border: 1px solid #1e2a45; border-radius: 12px; padding: 12px 16px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
+.current-price { font-size: 24px; font-weight: 800; color: #e0e6f0; }
+.price-change { font-size: 13px; font-weight: 600; padding: 3px 8px; border-radius: 6px; }
+.price-change.up { background: rgba(0,230,118,0.15); color: #00e676; }
+.price-change.down { background: rgba(244,67,54,0.15); color: #f44336; }
+.pair-info { font-size: 11px; color: #4a5568; margin-top: 2px; }
+
+/* İNDİKATÖR GRID */
+.ind-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+.ind-card { background: #0d1220; border: 1px solid #1e2a45; border-radius: 10px; padding: 10px 12px; }
+.ind-name { font-size: 10px; color: #4a5568; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+.ind-value { font-size: 14px; font-weight: 600; }
+.ind-value.bull { color: #00e676; }
+.ind-value.bear { color: #f44336; }
+.ind-value.neu { color: #7eb8ff; }
+.ind-value.warn { color: #ffb300; }
+
+/* PUAN TABLOSU */
+.score-section { background: #0d1220; border: 1px solid #1e2a45; border-radius: 12px; padding: 14px; margin-bottom: 12px; }
+.score-title { font-size: 12px; color: #4a5568; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
+.score-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid #0a0e1a; }
+.score-row:last-child { border-bottom: none; }
+.score-name { font-size: 12px; color: #8899aa; }
+.score-status { font-size: 12px; font-weight: 600; }
+
+/* MUM SAYACI */
+.candle-timer { background: #0d1220; border: 1px solid #1e2a45; border-radius: 12px; padding: 12px 16px; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; }
+.timer-label { font-size: 11px; color: #4a5568; }
+.timer-val { font-size: 18px; font-weight: 700; color: #7eb8ff; font-variant-numeric: tabular-nums; }
+.timer-bar-wrap { flex: 1; margin: 0 12px; height: 4px; background: #1e2a45; border-radius: 2px; }
+.timer-bar { height: 4px; background: #7eb8ff; border-radius: 2px; transition: width 1s linear; }
+
+/* POZISYON TAKİP */
+.pos-card { border-radius: 12px; padding: 14px; margin-bottom: 12px; }
+.pos-card.long-pos { background: rgba(0,230,118,0.08); border: 1px solid rgba(0,230,118,0.3); }
+.pos-card.short-pos { background: rgba(244,67,54,0.08); border: 1px solid rgba(244,67,54,0.3); }
+.pos-card.no-pos { background: #0d1220; border: 1px solid #1e2a45; }
+.pos-title { font-size: 12px; color: #4a5568; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
+.pos-row { display: flex; justify-content: space-between; margin-bottom: 6px; }
+.pos-label { font-size: 12px; color: #8899aa; }
+.pos-val { font-size: 12px; font-weight: 600; color: #e0e6f0; }
+.pnl-bar { height: 6px; background: #1e2a45; border-radius: 3px; margin-top: 8px; overflow: hidden; }
+.pnl-fill { height: 100%; border-radius: 3px; transition: width 0.5s; }
+
+.loading { text-align: center; padding: 40px; color: #4a5568; font-size: 14px; }
+.error-msg { background: rgba(244,67,54,0.1); border: 1px solid rgba(244,67,54,0.3); border-radius: 10px; padding: 12px; font-size: 13px; color: #f44336; margin-bottom: 12px; }
+
+.refresh-btn { width: 100%; background: #1e2a45; border: none; color: #7eb8ff; padding: 12px; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; margin-bottom: 12px; }
+.refresh-btn:active { background: #2a3a5a; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <span class="live-dot"></span>
+    <span class="header h1" style="font-size:16px;font-weight:700;color:#7eb8ff;">BTC/ETH Pro Sinyal</span>
+  </div>
+  <div class="last-update" id="lastUpdate">Yükleniyor...</div>
+</div>
+
+<div class="tab-bar">
+  <div class="tab active" onclick="setTab('btc')">₿ BTC</div>
+  <div class="tab" onclick="setTab('eth')">Ξ ETH</div>
+</div>
+
+<div class="content" id="mainContent">
+  <div class="loading">Canlı veri yükleniyor...</div>
+</div>
+
+<script>
+let currentPair = 'btc';
+let btcData = null;
+let ethData = null;
+let timerInterval = null;
+let refreshInterval = null;
+let positionData = { btc: null, eth: null };
+
+const PAIRS = {
+  btc: { symbol: 'BTCUSDT', name: 'Bitcoin' },
+  eth: { symbol: 'ETHUSDT', name: 'Ethereum' }
+};
+
+function setTab(pair) {
+  currentPair = pair;
+  document.querySelectorAll('.tab').forEach((t,i) => {
+    t.classList.toggle('active', (i===0 && pair==='btc') || (i===1 && pair==='eth'));
+  });
+  renderUI();
+}
+
+// Binance kline verisi çek
+async function fetchKlines(symbol, interval='15m', limit=100) {
+  const url = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`;
+  const r = await fetch(url);
+  const d = await r.json();
+  return d.map(k => ({
+    time: k[0], open: +k[1], high: +k[2], low: +k[3], close: +k[4], volume: +k[5]
+  }));
+}
+
+async function fetchTicker(symbol) {
+  const r = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}`);
+  return await r.json();
+}
+
+// EMA hesapla
+function calcEMA(data, period) {
+  const k = 2 / (period + 1);
+  let ema = data[0];
+  const result = [ema];
+  for (let i = 1; i < data.length; i++) {
+    ema = data[i] * k + ema * (1 - k);
+    result.push(ema);
+  }
+  return result;
+}
+
+// RSI hesapla
+function calcRSI(closes, period=14) {
+  let gains = 0, losses = 0;
+  for (let i = 1; i <= period; i++) {
+    const d = closes[i] - closes[i-1];
+    if (d > 0) gains += d; else losses -= d;
+  }
+  let avgGain = gains / period;
+  let avgLoss = losses / period;
+  const result = new Array(period).fill(50);
+  for (let i = period; i < closes.length; i++) {
+    const d = closes[i] - closes[i-1];
+    avgGain = (avgGain * (period-1) + (d > 0 ? d : 0)) / period;
+    avgLoss = (avgLoss * (period-1) + (d < 0 ? -d : 0)) / period;
+    result.push(avgLoss === 0 ? 100 : 100 - 100/(1+avgGain/avgLoss));
+  }
+  return result;
+}
+
+// MACD hesapla
+function calcMACD(closes) {
+  const ema12 = calcEMA(closes, 12);
+  const ema26 = calcEMA(closes, 26);
+  const macdLine = ema12.map((v,i) => v - ema26[i]);
+  const signal = calcEMA(macdLine.slice(26), 9);
+  const hist = signal.map((v,i) => macdLine[i+26] - v);
+  return { macdLine, signal, hist, offset: 26 };
+}
+
+// ATR hesapla
+function calcATR(candles, period=14) {
+  const tr = candles.map((c,i) => {
+    if (i === 0) return c.high - c.low;
+    const prev = candles[i-1].close;
+    return Math.max(c.high - c.low, Math.abs(c.high - prev), Math.abs(c.low - prev));
+  });
+  let atr = tr.slice(0,period).reduce((a,b) => a+b, 0) / period;
+  const result = new Array(period).fill(atr);
+  for (let i = period; i < tr.length; i++) {
+    atr = (atr * (period-1) + tr[i]) / period;
+    result.push(atr);
+  }
+  return result;
+}
+
+// Stoch RSI
+function calcStochRSI(closes, period=14, k=3, d=3) {
+  const rsi = calcRSI(closes, period);
+  const stoch = rsi.map((v,i) => {
+    if (i < period) return 50;
+    const slice = rsi.slice(i-period+1, i+1);
+    const mn = Math.min(...slice), mx = Math.max(...slice);
+    return mx === mn ? 50 : (v - mn) / (mx - mn) * 100;
+  });
+  // Smooth K
+  const smoothK = stoch.map((v,i) => {
+    if (i < k-1) return 50;
+    return stoch.slice(i-k+1,i+1).reduce((a,b)=>a+b,0)/k;
+  });
+  return smoothK;
+}
+
+// Supertrend
+function calcSupertrend(candles, period=10, mult=3.0) {
+  const atr = calcATR(candles, period);
+  let upperBand = [], lowerBand = [], supertrend = [], direction = [];
+  for (let i = 0; i < candles.length; i++) {
+    const hl2 = (candles[i].high + candles[i].low) / 2;
+    const up = hl2 + mult * atr[i];
+    const dn = hl2 - mult * atr[i];
+    upperBand.push(up);
+    lowerBand.push(dn);
+    if (i === 0) { supertrend.push(up); direction.push(1); continue; }
+    const prevST = supertrend[i-1];
+    const prevDir = direction[i-1];
+    let st, dir;
+    if (prevDir === 1) {
+      st = Math.max(dn, lowerBand[i-1] || dn);
+      dir = candles[i].close < st ? -1 : 1;
+      if (dir === 1) st = Math.max(dn, lowerBand[i-1] || dn);
+      else st = Math.min(up, upperBand[i-1] || up);
+    } else {
+      st = Math.min(up, upperBand[i-1] || up);
+      dir = candles[i].close > st ? 1 : -1;
+      if (dir === -1) st = Math.min(up, upperBand[i-1] || up);
+      else st = Math.max(dn, lowerBand[i-1] || dn);
+    }
+    supertrend.push(st);
+    direction.push(dir);
+  }
+  return direction;
+}
+
+// ADX
+function calcADX(candles, period=14) {
+  const result = [];
+  for (let i = 0; i < candles.length; i++) {
+    if (i < period) { result.push(0); continue; }
+    let plusDM = 0, minusDM = 0, tr = 0;
+    for (let j = i-period+1; j <= i; j++) {
+      const upMove = candles[j].high - candles[j-1].high;
+      const downMove = candles[j-1].low - candles[j].low;
+      if (upMove > downMove && upMove > 0) plusDM += upMove;
+      if (downMove > upMove && downMove > 0) minusDM += downMove;
+      tr += Math.max(candles[j].high-candles[j].low, Math.abs(candles[j].high-candles[j-1].close), Math.abs(candles[j].low-candles[j-1].close));
+    }
+    const plusDI = tr > 0 ? 100*plusDM/tr : 0;
+    const minusDI = tr > 0 ? 100*minusDM/tr : 0;
+    const dx = plusDI+minusDI > 0 ? 100*Math.abs(plusDI-minusDI)/(plusDI+minusDI) : 0;
+    result.push(dx);
+  }
+  return result;
+}
+
+// OBV
+function calcOBV(candles) {
+  let obv = 0;
+  return candles.map((c,i) => {
+    if (i === 0) return 0;
+    if (c.close > candles[i-1].close) obv += c.volume;
+    else if (c.close < candles[i-1].close) obv -= c.volume;
+    return obv;
+  });
+}
+
+// Fibonacci
+function calcFib(candles, period=50) {
+  const slice = candles.slice(-period);
+  const hi = Math.max(...slice.map(c=>c.high));
+  const lo = Math.min(...slice.map(c=>c.low));
+  const range = hi - lo;
+  return {
+    hi, lo,
+    fib236: hi - range * 0.236,
+    fib382: hi - range * 0.382,
+    fib500: hi - range * 0.500,
+    fib618: hi - range * 0.618,
+  };
+}
+
+// Ana analiz fonksiyonu
+function analyze(candles, ticker) {
+  const n = candles.length;
+  const closes = candles.map(c => c.close);
+  const i = n - 1; // son bar
+
+  const ema9  = calcEMA(closes, 9);
+  const ema21 = calcEMA(closes, 21);
+  const ema50 = calcEMA(closes, 50);
+  const ema200= calcEMA(closes, 200);
+  const rsi   = calcRSI(closes);
+  const stoch = calcStochRSI(closes);
+  const macd  = calcMACD(closes);
+  const atr   = calcATR(candles);
+  const adx   = calcADX(candles);
+  const obv   = calcOBV(candles);
+  const obvEMA= calcEMA(obv, 21);
+  const st    = calcSupertrend(candles);
+  const fib   = calcFib(candles);
+
+  const volAvg = closes.slice(-20).reduce((a,b,_,arr) => a + candles[n-20+closes.slice(-20).indexOf(b)].volume, 0) / 20;
+
+  const macdI = i - macd.offset;
+  const macdVal = macdI >= 0 ? macd.macdLine[i] : 0;
+  const macdSig = macdI >= 0 ? macd.signal[macdI] : 0;
+  const macdHist= macdI >= 0 ? macd.hist[macdI] : 0;
+
+  const c = candles[i];
+  const atrVal = atr[i];
+
+  // Mum formasyonlari
+  const body = Math.abs(c.close - c.open);
+  const upperWick = c.high - Math.max(c.close, c.open);
+  const lowerWick = Math.min(c.close, c.open) - c.low;
+  const prevC = candles[i-1];
+  const prevBody = Math.abs(prevC.close - prevC.open);
+  const bullEngulf = c.close > c.open && prevC.close < prevC.open && c.close > prevC.open && c.open < prevC.close && body > prevBody;
+  const bearEngulf = c.close < c.open && prevC.close > prevC.open && c.close < prevC.open && c.open > prevC.close && body > prevBody;
+  const bullPin = lowerWick > body * 2 && lowerWick > upperWick * 2 && c.close > c.open;
+  const bearPin = upperWick > body * 2 && upperWick > lowerWick * 2 && c.close < c.open;
+
+  const fibTol = atrVal * 0.5;
+  const nearFibSup = Math.abs(c.close - fib.fib618) < fibTol || Math.abs(c.close - fib.fib500) < fibTol || Math.abs(c.close - fib.fib382) < fibTol;
+  const nearFibRes = Math.abs(c.close - fib.fib236) < fibTol || Math.abs(c.close - fib.fib382) < fibTol;
+
+  const volStrong = c.volume > volAvg * 1.2;
+  const adxStrong = adx[i] >= 20;
+
+  // LONG puanlar
+  const lConds = [
+    { name: 'EMA Trend', val: ema9[i] > ema21[i] && ema21[i] > ema50[i] },
+    { name: 'EMA 200',   val: c.close > ema200[i] },
+    { name: 'RSI',       val: rsi[i] > 45 && rsi[i] < 70 },
+    { name: 'Stoch RSI', val: stoch[i] > stoch[i-1] && stoch[i] < 80 },
+    { name: 'MACD',      val: macdVal > macdSig && macdHist > 0 },
+    { name: 'OBV',       val: obv[i] > obvEMA[i] && volStrong },
+    { name: 'Formasyon', val: bullEngulf || bullPin },
+    { name: 'ADX',       val: adxStrong },
+    { name: 'Supertrend',val: st[i] === 1 },
+    { name: 'Fibonacci', val: nearFibSup },
+  ];
+
+  // SHORT puanlar
+  const sConds = [
+    { name: 'EMA Trend', val: ema9[i] < ema21[i] && ema21[i] < ema50[i] },
+    { name: 'EMA 200',   val: c.close < ema200[i] },
+    { name: 'RSI',       val: rsi[i] < 55 && rsi[i] > 30 },
+    { name: 'Stoch RSI', val: stoch[i] < stoch[i-1] && stoch[i] > 20 },
+    { name: 'MACD',      val: macdVal < macdSig && macdHist < 0 },
+    { name: 'OBV',       val: obv[i] < obvEMA[i] && volStrong },
+    { name: 'Formasyon', val: bearEngulf || bearPin },
+    { name: 'ADX',       val: adxStrong },
+    { name: 'Supertrend',val: st[i] === -1 },
+    { name: 'Fibonacci', val: nearFibRes },
+  ];
+
+  const longScore  = lConds.filter(x=>x.val).length;
+  const shortScore = sConds.filter(x=>x.val).length;
+
+  const slDist = atrVal * 1.5;
+  const levRaw = 1.5 / (slDist / c.close * 100);
+  const levVal = Math.min(Math.round(levRaw * 2) / 2, 10);
+
+  let signal = 'BEKLE';
+  let signalDir = 'wait';
+  if (longScore >= 6)  { signal = 'AL'; signalDir = 'long'; }
+  if (shortScore >= 6) { signal = 'SAT'; signalDir = 'short'; }
+
+  const entry  = c.close;
+  const slLong = entry - slDist;
+  const tpLong = entry + slDist * 2;
+  const slShort= entry + slDist;
+  const tpShort= entry - slDist * 2;
+
+  return {
+    signal, signalDir, longScore, shortScore,
+    entry, atrVal, levVal,
+    sl: signalDir === 'short' ? slShort : slLong,
+    tp: signalDir === 'short' ? tpShort : tpLong,
+    rsi: rsi[i], stoch: stoch[i],
+    macdHist, ema9: ema9[i], ema21: ema21[i], ema50: ema50[i], ema200: ema200[i],
+    adx: adx[i], adxStrong, stLong: st[i]===1,
+    obv: obv[i] > obvEMA[i], volStrong,
+    fib, nearFibSup, nearFibRes,
+    lConds, sConds,
+    ticker,
+    candles
+  };
+}
+
+// Mum kapanışına kalan süre
+function getTimeToClose(interval='15m') {
+  const mins = parseInt(interval);
+  const now = Date.now();
+  const msSinceEpoch = now;
+  const msPerCandle = mins * 60 * 1000;
+  const remaining = msPerCandle - (msSinceEpoch % msPerCandle);
+  return remaining;
+}
+
+function formatTime(ms) {
+  const s = Math.floor(ms / 1000);
+  const m = Math.floor(s / 60);
+  const sec = s % 60;
+  return `${m}:${sec.toString().padStart(2,'0')}`;
+}
+
+async function loadData(pair) {
+  const sym = PAIRS[pair].symbol;
+  const [candles, ticker] = await Promise.all([
+    fetchKlines(sym, '15m', 220),
+    fetchTicker(sym)
+  ]);
+  return { candles, ticker, analysis: analyze(candles, ticker) };
+}
+
+async function refreshAll() {
+  try {
+    document.getElementById('lastUpdate').textContent = 'Güncelleniyor...';
+    const [b, e] = await Promise.all([loadData('btc'), loadData('eth')]);
+    btcData = b;
+    ethData = e;
+    document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString('tr-TR');
+    renderUI();
+  } catch(err) {
+    document.getElementById('lastUpdate').textContent = 'Hata!';
+    document.getElementById('mainContent').innerHTML = `<div class="error-msg">Veri çekilemedi. İnternet bağlantınızı kontrol edin.<br><small>${err.message}</small></div><button class="refresh-btn" onclick="refreshAll()">Tekrar Dene</button>`;
+  }
+}
+
+function renderUI() {
+  const data = currentPair === 'btc' ? btcData : ethData;
+  if (!data) { document.getElementById('mainContent').innerHTML = '<div class="loading">Yükleniyor...</div>'; return; }
+
+  const { analysis: a, ticker: t } = data;
+  const priceChange = parseFloat(t.priceChangePercent);
+  const changeClass = priceChange >= 0 ? 'up' : 'down';
+  const changeSign  = priceChange >= 0 ? '+' : '';
+
+  // Sinyal rengi
+  const signalColors = { long:'long', short:'short', wait:'wait' };
+  const sc = signalColors[a.signalDir];
+
+  // Puan bar (10 nokta)
+  const score = a.signalDir === 'short' ? a.shortScore : a.longScore;
+  const dots = Array.from({length:10}, (_,i) => `<div class="strength-dot ${i < score ? 'active '+sc : ''}"></div>`).join('');
+
+  // Güç metni
+  const guc = score >= 9 ? 'MÜKEMMEL' : score >= 7 ? 'GÜÇLÜ' : score >= 5 ? 'ORTA' : 'ZAYIF';
+
+  // Remaining time
+  const rem = getTimeToClose('15m');
+  const pct = (1 - rem / (15*60*1000)) * 100;
+
+  // Pozisyon takip
+  const pos = positionData[currentPair];
+
+  const html = `
+    <div class="price-bar">
+      <div>
+        <div class="current-price">${parseFloat(t.lastPrice).toLocaleString('tr-TR', {maximumFractionDigits:2})}</div>
+        <div class="pair-info">${PAIRS[currentPair].name} / USDT</div>
+      </div>
+      <div class="price-change ${changeClass}">${changeSign}${priceChange.toFixed(2)}%</div>
+    </div>
+
+    <div class="candle-timer">
+      <div>
+        <div class="timer-label">Sonraki mum</div>
+        <div class="timer-val" id="timerVal">${formatTime(rem)}</div>
+      </div>
+      <div class="timer-bar-wrap">
+        <div class="timer-bar" id="timerBar" style="width:${pct}%"></div>
+      </div>
+      <div style="font-size:11px;color:#4a5568;">15dk</div>
+    </div>
+
+    <div class="signal-card ${sc}">
+      <div class="signal-type ${sc}">${a.signal}</div>
+      <div class="signal-strength">${guc} — ${score}/10 kriter</div>
+      <div class="strength-bar">${dots}</div>
+      ${a.signalDir !== 'wait' ? `
+      <div class="price-grid">
+        <div class="price-item">
+          <div class="price-label">Giriş</div>
+          <div class="price-value entry">${Math.round(a.entry).toLocaleString('tr-TR')}</div>
+        </div>
+        <div class="price-item">
+          <div class="price-label">Stop Loss</div>
+          <div class="price-value sl">${Math.round(a.sl).toLocaleString('tr-TR')}</div>
+        </div>
+        <div class="price-item">
+          <div class="price-label">Take Profit</div>
+          <div class="price-value tp">${Math.round(a.tp).toLocaleString('tr-TR')}</div>
+        </div>
+      </div>
+      <span class="lev-badge">${a.levVal}x Kaldıraç</span>
+      ` : `<div style="color:#4a5568;font-size:13px;margin-top:8px;">Güçlü sinyal bekleniyor...<br>Long: ${a.longScore}/10 &nbsp;|&nbsp; Short: ${a.shortScore}/10</div>`}
+    </div>
+
+    <div class="ind-grid">
+      <div class="ind-card">
+        <div class="ind-name">RSI</div>
+        <div class="ind-value ${a.rsi > 70 ? 'bear' : a.rsi < 30 ? 'bull' : a.rsi > 50 ? 'bull' : 'warn'}">${a.rsi.toFixed(1)}</div>
+      </div>
+      <div class="ind-card">
+        <div class="ind-name">Stoch RSI</div>
+        <div class="ind-value ${a.stoch > 80 ? 'bear' : a.stoch < 20 ? 'bull' : a.stoch > 50 ? 'bull' : 'warn'}">${a.stoch.toFixed(1)}</div>
+      </div>
+      <div class="ind-card">
+        <div class="ind-name">MACD</div>
+        <div class="ind-value ${a.macdHist > 0 ? 'bull' : 'bear'}">${a.macdHist > 0 ? 'POZİTİF' : 'NEGATİF'}</div>
+      </div>
+      <div class="ind-card">
+        <div class="ind-name">Supertrend</div>
+        <div class="ind-value ${a.stLong ? 'bull' : 'bear'}">${a.stLong ? 'YUKARI' : 'ASAGI'}</div>
+      </div>
+      <div class="ind-card">
+        <div class="ind-name">ADX</div>
+        <div class="ind-value ${a.adxStrong ? 'bull' : 'warn'}">${a.adx.toFixed(0)} ${a.adxStrong?'GÜÇLÜ':'ZAYIF'}</div>
+      </div>
+      <div class="ind-card">
+        <div class="ind-name">EMA Trend</div>
+        <div class="ind-value ${a.ema9 > a.ema21 && a.ema21 > a.ema50 ? 'bull' : a.ema9 < a.ema21 ? 'bear' : 'warn'}">${a.ema9 > a.ema21 && a.ema21 > a.ema50 ? 'YUKARI' : a.ema9 < a.ema21 ? 'ASAGI' : 'YATAY'}</div>
+      </div>
+      <div class="ind-card">
+        <div class="ind-name">OBV</div>
+        <div class="ind-value ${a.obv ? 'bull' : 'bear'}">${a.obv ? 'YÜKSELİYOR' : 'DÜŞÜYOR'}</div>
+      </div>
+      <div class="ind-card">
+        <div class="ind-name">Hacim</div>
+        <div class="ind-value ${a.volStrong ? 'bull' : 'neu'}">${a.volStrong ? 'GÜÇLÜ' : 'ZAYIF'}</div>
+      </div>
+    </div>
+
+    <div class="score-section">
+      <div class="score-title">Kriter Detayı — ${a.signalDir === 'short' ? 'SHORT' : 'LONG'}</div>
+      ${(a.signalDir === 'short' ? a.sConds : a.lConds).map(c => `
+        <div class="score-row">
+          <span class="score-name">${c.name}</span>
+          <span class="score-status" style="color:${c.val?'#00e676':'#f44336'}">${c.val ? '✓' : '✗'}</span>
+        </div>
+      `).join('')}
+    </div>
+
+    <button class="refresh-btn" onclick="refreshAll()">↻ Güncelle</button>
+  `;
+
+  document.getElementById('mainContent').innerHTML = html;
+  startTimer();
+}
+
+function startTimer() {
+  if (timerInterval) clearInterval(timerInterval);
+  timerInterval = setInterval(() => {
+    const rem = getTimeToClose('15m');
+    const pct = (1 - rem / (15*60*1000)) * 100;
+    const el = document.getElementById('timerVal');
+    const bar = document.getElementById('timerBar');
+    if (el) el.textContent = formatTime(rem);
+    if (bar) bar.style.width = pct + '%';
+    // Mum kapaninca otomatik yenile
+    if (rem < 1500) setTimeout(refreshAll, 1500);
+  }, 1000);
+}
+
+// Başlat
+refreshAll();
+// Her 60 saniyede bir otomatik yenile
+refreshInterval = setInterval(refreshAll, 60000);
+</script>
+</body>
+</html>
