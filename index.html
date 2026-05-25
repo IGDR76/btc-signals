@@ -593,10 +593,47 @@ function startTimer() {
   }, 1000);
 }
 
+// WebSocket anlık fiyat
+let wsPrice = { btc: null, eth: null };
+let wsBtc = null, wsEth = null;
+
+function connectWS() {
+  // BTC WebSocket
+  wsBtc = new WebSocket('wss://stream.binance.com:9443/ws/btcusdt@ticker');
+  wsBtc.onmessage = (e) => {
+    const d = JSON.parse(e.data);
+    wsPrice.btc = parseFloat(d.c);
+    if (currentPair === 'btc') updateLivePrice(wsPrice.btc, parseFloat(d.P));
+  };
+  wsBtc.onclose = () => setTimeout(() => connectWS(), 3000);
+
+  // ETH WebSocket
+  wsEth = new WebSocket('wss://stream.binance.com:9443/ws/ethusdt@ticker');
+  wsEth.onmessage = (e) => {
+    const d = JSON.parse(e.data);
+    wsPrice.eth = parseFloat(d.c);
+    if (currentPair === 'eth') updateLivePrice(wsPrice.eth, parseFloat(d.P));
+  };
+  wsEth.onclose = () => setTimeout(() => connectWS(), 3000);
+}
+
+function updateLivePrice(price, changePct) {
+  const el = document.querySelector('.current-price');
+  if (el) el.textContent = price.toLocaleString('tr-TR', {maximumFractionDigits:2});
+  const chEl = document.querySelector('.price-change');
+  if (chEl) {
+    const sign = changePct >= 0 ? '+' : '';
+    chEl.textContent = sign + changePct.toFixed(2) + '%';
+    chEl.className = 'price-change ' + (changePct >= 0 ? 'up' : 'down');
+  }
+  document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString('tr-TR');
+}
+
 // Başlat
 refreshAll();
-// Her 60 saniyede bir otomatik yenile
-refreshInterval = setInterval(refreshAll, 60000);
+connectWS();
+// Her 30 saniyede indikatörleri yenile
+refreshInterval = setInterval(refreshAll, 10000);
 </script>
 </body>
 </html>
